@@ -52,8 +52,8 @@ def get_loader(args):
     # Notes: 数据集选择逻辑 / Dataset selection logic
     
     # Adaptation: 只保留 hymenoptera 数据集 / Keep only hymenoptera dataset
-    train_path = "./data/hymenoptera_data/train"
-    val_path = "./data/hymenoptera_data/val"
+    train_path = "./data/hymeno/hymenoptera_data/train"
+    val_path = "./data/hymeno/hymenoptera_data/val"
     required_classes = ["ants", "bees"]
 
     check_dataset_integrity(train_path, required_classes)
