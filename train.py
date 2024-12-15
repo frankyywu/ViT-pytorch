@@ -58,8 +58,17 @@ def save_model(args, model):
 def setup(args):
     # Prepare model
     config = CONFIGS[args.model_type]
-
-    num_classes = 10 if args.dataset == "cifar10" else 100
+    
+    # Adaptation: 需要将 choices 修改为支持我们自己的数据集：
+    #num_classes = 10 if args.dataset == "cifar10" else 100
+    if args.dataset == "cifar10":
+        num_classes = 10
+    elif args.dataset == "cifar100":
+        num_classes = 100
+    elif args.dataset == "hymenoptera":
+        num_classes = 2  # 蜜蜂和蚂蚁两个类别
+    else:
+        raise ValueError("Unsupported dataset: %s" % args.dataset)
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
     model.load_from(np.load(args.pretrained_dir))
@@ -210,6 +219,7 @@ def train(args, model):
                 else:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 scheduler.step()
+                logger.info(f"Learning rate updated: {scheduler.get_last_lr()}")
                 optimizer.step()
                 optimizer.zero_grad()
                 global_step += 1
@@ -244,17 +254,29 @@ def main():
     # Required parameters
     parser.add_argument("--name", required=True,
                         help="Name of this run. Used for monitoring.")
-    parser.add_argument("--dataset", choices=["cifar10", "cifar100"], default="cifar10",
+
+    # Adaptation: for our Datasets
+    #parser.add_argument("--dataset", choices=["cifar10", "cifar100"], default="cifar10",
+    parser.add_argument("--dataset", choices=["cifar10", "cifar100", "hymenoptera"], default="hymenoptera",
                         help="Which downstream task.")
+    
+    
     parser.add_argument("--model_type", choices=["ViT-B_16", "ViT-B_32", "ViT-L_16",
                                                  "ViT-L_32", "ViT-H_14", "R50-ViT-B_16"],
                         default="ViT-B_16",
                         help="Which variant to use.")
     parser.add_argument("--pretrained_dir", type=str, default="checkpoint/ViT-B_16.npz",
                         help="Where to search for pretrained ViT models.")
-    parser.add_argument("--output_dir", default="output", type=str,
+   
+    # Adaptation
+    '''parser.add_argument("--output_dir", default="output", type=str,
                         help="The output directory where checkpoints will be written.")
-
+                        '''
+    parser.add_argument("--output_dir", type=str, default="./output",
+                    help="Base directory where checkpoints will be saved. Each dataset will have a subdirectory.")
+    parser.add_argument("--data_dir", type=str, default="./data/hymeno/hymenoptera_data",
+                    help="Path to the dataset directory. It should contain 'train' and 'val' subdirectories.")
+    
     parser.add_argument("--img_size", default=224, type=int,
                         help="Resolution size")
     parser.add_argument("--train_batch_size", default=512, type=int,
@@ -294,6 +316,22 @@ def main():
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
     args = parser.parse_args()
+
+    # New: For output management
+    # Check if the dataset directory exists
+    data_train_path = os.path.join(args.data_dir, "train")
+    data_val_path = os.path.join(args.data_dir, "val")
+
+    if not os.path.exists(data_train_path) or not os.path.exists(data_val_path):
+        raise FileNotFoundError(
+            f"Training or validation dataset not found.\n"
+            f"Expected structure:\n"
+            f"  {args.data_dir}/train\n"
+            f"  {args.data_dir}/val"
+        )
+    # Create output directory
+    args.output_dir = os.path.join(args.output_dir, args.dataset)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1:
