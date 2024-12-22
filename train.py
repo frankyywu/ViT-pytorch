@@ -59,7 +59,7 @@ def setup(args):
     # Prepare model
     config = CONFIGS[args.model_type]
     
-    # Adaptation: 需要将 choices 修改为支持我们自己的数据集：
+    # Adaptation: 需要将 choices 修改为支持bee/ant的数据集：
     #num_classes = 10 if args.dataset == "cifar10" else 100
     if args.dataset == "cifar10":
         num_classes = 10
@@ -72,6 +72,16 @@ def setup(args):
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
     model.load_from(np.load(args.pretrained_dir))
+    
+    # Adaptation Dec 22 2024: When running the script, you can control whether to train from scratch by passing the "--train_from_scratch" parameter. / 在运行脚本时，可以通过传递“--train_from_scratch”参数来控制是否从头开始训练。
+    if args.train_from_scratch:
+        # Initialize model parameters from scratch
+        model.apply(initialize_weights)
+    else:
+        # Load pretrained weights
+        model.load_from(np.load(args.pretrained_dir))
+    
+    
     model.to(args.device)
     num_params = count_parameters(model)
 
@@ -81,6 +91,12 @@ def setup(args):
     print(num_params)
     return args, model
 
+# Adaptation Dec 22 2024: See above "if args.train_from_scratch:"
+def initialize_weights(module):
+    if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
+        nn.init.kaiming_normal_(module.weight)
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
 
 def count_parameters(model):
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
