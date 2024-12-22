@@ -71,7 +71,6 @@ def setup(args):
         raise ValueError("Unsupported dataset: %s" % args.dataset)
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
-    model.load_from(np.load(args.pretrained_dir))
     
     # Adaptation Dec 22 2024: When running the script, you can control whether to train from scratch by passing the "--train_from_scratch" parameter. / 在运行脚本时，可以通过传递“--train_from_scratch”参数来控制是否从头开始训练。
     if args.train_from_scratch:
@@ -91,7 +90,7 @@ def setup(args):
     print(num_params)
     return args, model
 
-# Adaptation Dec 22 2024: See above "if args.train_from_scratch:"
+# Adaptation Dec 22 2024: See above "if args.train_from_scratch:" for notes.
 def initialize_weights(module):
     if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
         nn.init.kaiming_normal_(module.weight)
