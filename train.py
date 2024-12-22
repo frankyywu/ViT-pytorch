@@ -11,6 +11,7 @@ from datetime import timedelta
 
 import torch
 import torch.distributed as dist
+import torch.nn as nn
 
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
